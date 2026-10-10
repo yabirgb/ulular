@@ -128,7 +128,7 @@ final class SoftwareVolumeRouter: SoftwareVolumeRouting {
         }
         let composition: [String: Any] = [
             kAudioAggregateDeviceNameKey: "ulular Private Audio Route",
-            kAudioAggregateDeviceUIDKey: "com.musictask.route.\(UUID().uuidString)",
+            kAudioAggregateDeviceUIDKey: "com.ulular.route.\(UUID().uuidString)",
             kAudioAggregateDeviceIsPrivateKey: true,
             kAudioAggregateDeviceIsStackedKey: false,
             kAudioAggregateDeviceMainSubDeviceKey: uid as String,

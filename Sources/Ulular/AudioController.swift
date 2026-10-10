@@ -136,7 +136,7 @@ final class AudioController: ObservableObject {
             guard id != softwareRouter?.aggregateID, outputChannels(id) > 0 else { return nil }
             var uid: CFString = "" as CFString
             _ = read(id, address(kAudioDevicePropertyDeviceUID), into: &uid)
-            guard !(uid as String).hasPrefix("com.musictask.route.") else { return nil }
+            guard !(uid as String).hasPrefix("com.ulular.route.") else { return nil }
             var name: CFString = "Audio device" as CFString
             _ = read(id, address(kAudioObjectPropertyName), into: &name)
             return OutputDevice(id: id, name: name as String)

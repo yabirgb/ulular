@@ -6,7 +6,7 @@ A native macOS menu-bar app for selecting your audio output and controlling its 
 
 The logo evokes a windy night: a pixel crescent, a star, and two curling gusts. The menu-bar image is an 18-point monochrome template with dedicated 1× and 2× bitmaps, so macOS adapts it to light/dark menu bars and selection highlights. The Finder icon uses a stepped midnight-blue tile, a warm moon, and icy-blue wind. Both are generated from `Sources/Ulular/UlularLogo.swift`; the build script creates all standard `.icns` sizes without third-party tools.
 
-The app was formerly called MusicTask. Its bundle identifier and preferences domain remain `com.musictask.app` to preserve existing settings and identity. Quit and remove the old app before installing ulular; re-enable Start at Login from the new location if needed. macOS permissions may need renewed approval after rebuilding or moving the app.
+The app was formerly called MusicTask. Its bundle identifier and preferences domain are now `com.ulular.app`, so settings saved under the old `com.musictask.app` domain are not carried over. Quit and remove the old app before installing ulular; re-enable Start at Login from the new location if needed. macOS permissions may need renewed approval after rebuilding or moving the app.
 
 ## Requirements
 
@@ -35,7 +35,7 @@ For an output without a writable hardware volume control, click **Enable Softwar
 
 The first activation starts at 25% on the slider. The slider uses a perceptual (cubic) taper, so equal slider movements sound like roughly equal loudness changes: 25% is about −36 dB and 50% about −18 dB. Once enabled, ulular remembers software volume **per device UID**, including its last volume level and mute state. It restores the route when the app reopens with that monitor selected, when you return to that output, and after sleep/wake. It does not change the default output on launch or automatically enable software volume for unfamiliar monitors. Clicking **Stop** disables automatic activation for that monitor; simply quitting preserves it.
 
-While active, the slider and mute button control ulular's gain, not the monitor's hardware. macOS's own volume sliders do not control this gain. Preferences use the explicit `com.musictask.app` defaults domain for both bundled and development runs.
+While active, the slider and mute button control ulular's gain, not the monitor's hardware. macOS's own volume sliders do not control this gain. Preferences use the explicit `com.ulular.app` defaults domain for both bundled and development runs.
 
 ### Keyboard volume keys
 

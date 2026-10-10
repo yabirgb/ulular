@@ -29,7 +29,7 @@ public struct SoftwareOutputSettings: Equatable {
 /// Settings are stored as a native property-list dictionary and cached in memory,
 /// so saving on every slider change doesn't re-decode the whole store.
 public final class AudioPreferences {
-    public static let domain = "com.musictask.app"
+    public static let domain = "com.ulular.app"
 
     private let defaults: UserDefaults
     private let outputsKey = "softwareOutputs"

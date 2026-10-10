@@ -4,7 +4,7 @@
 <dict>
     <key>CFBundleName</key><string>ulular</string>
     <key>CFBundleDisplayName</key><string>ulular</string>
-    <key>CFBundleIdentifier</key><string>com.musictask.app</string>
+    <key>CFBundleIdentifier</key><string>com.ulular.app</string>
     <key>CFBundleExecutable</key><string>ulular</string>
     <key>CFBundleIconFile</key><string>ulular</string>
     <key>CFBundlePackageType</key><string>APPL</string>

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <math.h>
 
-struct MTGainState {
+struct ULGainState {
     _Atomic(float) target;
     float current;
     float step;
@@ -14,8 +14,8 @@ static float clampGain(float gain) {
     return isfinite(gain) ? fminf(1, fmaxf(0, gain)) : 0;
 }
 
-MTGainState *MTGainCreate(float gain, double sampleRate) {
-    MTGainState *state = calloc(1, sizeof(*state));
+ULGainState *ULGainCreate(float gain, double sampleRate) {
+    ULGainState *state = calloc(1, sizeof(*state));
     if (!state) return NULL;
     atomic_init(&state->target, clampGain(gain));
     // Never start louder than requested. Ramp up from silence to avoid a start click.
@@ -25,8 +25,8 @@ MTGainState *MTGainCreate(float gain, double sampleRate) {
     return state;
 }
 
-void MTGainDestroy(MTGainState *state) { free(state); }
-void MTGainSet(MTGainState *state, float gain) {
+void ULGainDestroy(ULGainState *state) { free(state); }
+void ULGainSet(ULGainState *state, float gain) {
     atomic_store_explicit(&state->target, clampGain(gain), memory_order_relaxed);
 }
 
@@ -71,7 +71,7 @@ static void zeroUncovered(AudioBufferList *output, const UInt32 covered[2]) {
 // on the audio thread. Missing input is silence, never stale output memory.
 // Every output byte is written exactly once: gain-scaled samples where input exists,
 // zeros everywhere else.
-void MTGainRender(MTGainState *state, const AudioBufferList *input, AudioBufferList *output) {
+void ULGainRender(ULGainState *state, const AudioBufferList *input, AudioBufferList *output) {
     const float *source[2] = {0};
     UInt32 stride[2] = {0}, frames[2] = {0};
     UInt32 channel = 0;
@@ -127,9 +127,9 @@ void MTGainRender(MTGainState *state, const AudioBufferList *input, AudioBufferL
     zeroUncovered(output, covered);
 }
 
-OSStatus MTGainIOProc(AudioObjectID device, const AudioTimeStamp *now,
+OSStatus ULGainIOProc(AudioObjectID device, const AudioTimeStamp *now,
     const AudioBufferList *input, const AudioTimeStamp *inputTime,
     AudioBufferList *output, const AudioTimeStamp *outputTime, void *context) {
-    MTGainRender(context, input, output);
+    ULGainRender(context, input, output);
     return noErr;
 }

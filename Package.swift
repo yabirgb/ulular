@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "MusicTask",
+    name: "ulular",
     platforms: [.macOS(.v13)],
-    products: [.executable(name: "MusicTask", targets: ["MusicTask"])],
+    products: [.executable(name: "ulular", targets: ["Ulular"])],
     targets: [
         .target(name: "AudioRealtime", linkerSettings: [.linkedFramework("CoreAudio")]),
         .target(name: "AppSettings"),
-        .executableTarget(name: "MusicTask", dependencies: ["AudioRealtime", "AppSettings"]),
+        .executableTarget(name: "Ulular", dependencies: ["AudioRealtime", "AppSettings"]),
         .testTarget(name: "AudioRealtimeTests", dependencies: ["AudioRealtime"]),
         .testTarget(name: "AppSettingsTests", dependencies: ["AppSettings"])
     ]

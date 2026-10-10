@@ -2,10 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key><string>MusicTask</string>
-    <key>CFBundleDisplayName</key><string>MusicTask</string>
+    <key>CFBundleName</key><string>ulular</string>
+    <key>CFBundleDisplayName</key><string>ulular</string>
     <key>CFBundleIdentifier</key><string>com.musictask.app</string>
-    <key>CFBundleExecutable</key><string>MusicTask</string>
+    <key>CFBundleExecutable</key><string>ulular</string>
+    <key>CFBundleIconFile</key><string>ulular</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.0.1</string>
     <key>CFBundleVersion</key><string>1</string>
@@ -13,6 +14,6 @@
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSAudioCaptureUsageDescription</key>
-    <string>MusicTask captures system audio locally to apply software volume before playing it through your selected monitor. Audio is not recorded or transmitted.</string>
+    <string>ulular captures system audio locally to apply software volume before playing it through your selected monitor. Audio is not recorded or transmitted.</string>
 </dict>
 </plist>

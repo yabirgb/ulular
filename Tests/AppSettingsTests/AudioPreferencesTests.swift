@@ -8,7 +8,7 @@ final class AudioPreferencesTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        domain = "MusicTaskTests.\(UUID().uuidString)"
+        domain = "UlularTests.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: domain)!
     }
 

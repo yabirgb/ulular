@@ -4,15 +4,15 @@ import AudioRealtime
 
 final class GainTests: XCTestCase {
     private func render(gain: Float, input: [Float], missingInput: Bool = false) -> [Float] {
-        let state = MTGainCreate(gain, 48_000)!
-        defer { MTGainDestroy(state) }
+        let state = ULGainCreate(gain, 48_000)!
+        defer { ULGainDestroy(state) }
         var source = input
         var result = [Float](repeating: 99, count: input.count)
         source.withUnsafeMutableBytes { src in
             result.withUnsafeMutableBytes { dst in
                 var inputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(src.count), mData: missingInput ? nil : src.baseAddress))
                 var outputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(dst.count), mData: dst.baseAddress))
-                MTGainRender(state, &inputList, &outputList)
+                ULGainRender(state, &inputList, &outputList)
             }
         }
         return result
@@ -42,15 +42,15 @@ final class GainTests: XCTestCase {
     }
 
     func testOutputLargerThanInputLeavesTailZeroed() {
-        let state = MTGainCreate(1, 48_000)!
-        defer { MTGainDestroy(state) }
+        let state = ULGainCreate(1, 48_000)!
+        defer { ULGainDestroy(state) }
         var source = [Float](repeating: 0.5, count: 2 * 600)
         var result = [Float](repeating: 99, count: 2 * 1000)
         source.withUnsafeMutableBytes { src in
             result.withUnsafeMutableBytes { dst in
                 var inputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(src.count), mData: src.baseAddress))
                 var outputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(dst.count), mData: dst.baseAddress))
-                MTGainRender(state, &inputList, &outputList)
+                ULGainRender(state, &inputList, &outputList)
             }
         }
         XCTAssertEqual(result[1198], 0.5, accuracy: 0.0001)
@@ -58,15 +58,15 @@ final class GainTests: XCTestCase {
     }
 
     func testExtraOutputChannelsAreZeroed() {
-        let state = MTGainCreate(1, 48_000)!
-        defer { MTGainDestroy(state) }
+        let state = ULGainCreate(1, 48_000)!
+        defer { ULGainDestroy(state) }
         var source = [Float](repeating: 0.5, count: 2 * 1000)
         var result = [Float](repeating: 99, count: 4 * 1000)
         source.withUnsafeMutableBytes { src in
             result.withUnsafeMutableBytes { dst in
                 var inputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(src.count), mData: src.baseAddress))
                 var outputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 4, mDataByteSize: UInt32(dst.count), mData: dst.baseAddress))
-                MTGainRender(state, &inputList, &outputList)
+                ULGainRender(state, &inputList, &outputList)
             }
         }
         for frame in 0..<1000 {
@@ -77,8 +77,8 @@ final class GainTests: XCTestCase {
     }
 
     func testPlanarInputToInterleavedOutputAndMuteChange() {
-        let state = MTGainCreate(0.5, 48_000)!
-        defer { MTGainDestroy(state) }
+        let state = ULGainCreate(0.5, 48_000)!
+        defer { ULGainDestroy(state) }
         let inputList = AudioBufferList.allocate(maximumBuffers: 2)
         defer { inputList.unsafeMutablePointer.deallocate() }
         var left = [Float](repeating: 0.8, count: 1000)
@@ -90,12 +90,12 @@ final class GainTests: XCTestCase {
                     inputList[0] = AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(l.count), mData: l.baseAddress)
                     inputList[1] = AudioBuffer(mNumberChannels: 1, mDataByteSize: UInt32(r.count), mData: r.baseAddress)
                     var outputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(dst.count), mData: dst.baseAddress))
-                    MTGainRender(state, inputList.unsafePointer, &outputList)
+                    ULGainRender(state, inputList.unsafePointer, &outputList)
                     let samples = dst.bindMemory(to: Float.self)
                     XCTAssertEqual(samples[1998], 0.4, accuracy: 0.0001)
                     XCTAssertEqual(samples[1999], -0.2, accuracy: 0.0001)
-                    MTGainSet(state, 0)
-                    MTGainRender(state, inputList.unsafePointer, &outputList)
+                    ULGainSet(state, 0)
+                    ULGainRender(state, inputList.unsafePointer, &outputList)
                     XCTAssertEqual(samples[1998], 0)
                     XCTAssertEqual(samples[1999], 0)
                 }

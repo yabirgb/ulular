@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// A macOS-style volume card for keys MusicTask consumes. The system card on
+/// A macOS-style volume card for keys ulular consumes. The system card on
 /// macOS 26 reads the device's hardware volume, so it can't show software gain.
 @MainActor
 enum VolumeHUD {
@@ -60,7 +60,7 @@ enum VolumeHUD {
                     panel.animator().alphaValue = 0
                 }, completionHandler: {
                     // A keypress during the fade restores alpha; don't hide then.
-                    Task { @MainActor in if panel.alphaValue == 0 { panel.orderOut(nil) } }
+                    Task { @MainActor in if panel.alphaValue <= 0.01 { panel.orderOut(nil) } }
                 })
             }
         }

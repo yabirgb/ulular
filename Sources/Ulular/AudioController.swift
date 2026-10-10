@@ -65,6 +65,9 @@ final class AudioController: ObservableObject {
     private var volumeElements: [AudioObjectPropertyElement] = []
     private var muteElements: [AudioObjectPropertyElement] = []
     private let system = AudioObjectID(kAudioObjectSystemObject)
+    private var pendingRefresh: Task<Void, Never>?
+    private var elementCache: [AudioObjectPropertySelector: [AudioObjectPropertyElement]] = [:]
+    private var elementCacheDevice: AudioDeviceID = kAudioObjectUnknown
 
     init() {
         keyboardControlsPreferred = preferences.keyboardPreferred
@@ -76,6 +79,8 @@ final class AudioController: ObservableObject {
 
     func stop() {
         isStopping = true
+        pendingRefresh?.cancel()
+        pendingRefresh = nil
         disableSoftwareVolume(forgetPreference: false)
         removeListeners(&deviceListeners)
         removeListeners(&hardwareListeners)
@@ -106,7 +111,21 @@ final class AudioController: ObservableObject {
         return AudioProperty.channelCount(device, scope: kAudioDevicePropertyScopeOutput, into: &count) == noErr ? count : 0
     }
 
+    /// Coalesces bursts of notifications (hub/dock unplug storms) into one refresh.
+    private func scheduleRefreshDevices() {
+        guard !isStopping else { return }
+        pendingRefresh?.cancel()
+        pendingRefresh = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(75))
+            guard !Task.isCancelled, let self else { return }
+            self.pendingRefresh = nil
+            self.refreshDevices()
+        }
+    }
+
     private func refreshDevices() {
+        pendingRefresh?.cancel()
+        pendingRefresh = nil
         var ids: [AudioDeviceID] = []
         let status = AudioProperty.readArray(system, address(kAudioHardwarePropertyDevices), of: AudioDeviceID.self, into: &ids)
         guard status == noErr else {
@@ -197,7 +216,20 @@ final class AudioController: ObservableObject {
         refreshDevices()
     }
 
+    /// Settability is stable per device and stream configuration, so probe once and
+    /// invalidate on device-list or StreamConfiguration changes.
     private func controllableElements(_ selector: AudioObjectPropertySelector) -> [AudioObjectPropertyElement] {
+        if elementCacheDevice != selectedID {
+            elementCache.removeAll()
+            elementCacheDevice = selectedID
+        }
+        if let cached = elementCache[selector] { return cached }
+        let elements = probeControllableElements(selector)
+        elementCache[selector] = elements
+        return elements
+    }
+
+    private func probeControllableElements(_ selector: AudioObjectPropertySelector) -> [AudioObjectPropertyElement] {
         let master = address(selector, scope: kAudioDevicePropertyScopeOutput)
         if AudioProperty.isSettable(selectedID, master) { return [kAudioObjectPropertyElementMain] }
         let count = outputChannels(selectedID)
@@ -208,31 +240,37 @@ final class AudioController: ObservableObject {
     }
 
     private func refreshVolume() {
+        // Assign only on change: @Published republishes (and re-renders SwiftUI) on every
+        // set, and our own writes echo back through the VolumeScalar listener.
+        func publish<T: Equatable>(_ keyPath: ReferenceWritableKeyPath<AudioController, T>, _ value: T) {
+            if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
+        }
         if softwareVolumeEnabled {
-            volume = softwareLevel
-            isMuted = softwareMuted
-            canAdjustVolume = true
-            canMute = true
+            publish(\.volume, softwareLevel)
+            publish(\.isMuted, softwareMuted)
+            publish(\.canAdjustVolume, true)
+            publish(\.canMute, true)
             return
         }
         guard selectedID != kAudioObjectUnknown else {
             volumeElements = []; muteElements = []
-            canAdjustVolume = false; canMute = false; volume = 0; isMuted = false
+            publish(\.canAdjustVolume, false); publish(\.canMute, false)
+            publish(\.volume, 0); publish(\.isMuted, false)
             return
         }
         volumeElements = controllableElements(kAudioDevicePropertyVolumeScalar)
         muteElements = controllableElements(kAudioDevicePropertyMute)
-        canAdjustVolume = !volumeElements.isEmpty
-        canMute = !muteElements.isEmpty
+        publish(\.canAdjustVolume, !volumeElements.isEmpty)
+        publish(\.canMute, !muteElements.isEmpty)
         let values: [Float32] = volumeElements.compactMap { element in
             var value: Float32 = 0
             return read(selectedID, address(kAudioDevicePropertyVolumeScalar, scope: kAudioDevicePropertyScopeOutput, element: element), into: &value) == noErr ? value : nil
         }
-        volume = values.isEmpty ? 0 : values.reduce(0, +) / Float(values.count)
-        isMuted = !muteElements.isEmpty && muteElements.allSatisfy { element in
+        publish(\.volume, values.isEmpty ? 0 : values.reduce(0, +) / Float(values.count))
+        publish(\.isMuted, !muteElements.isEmpty && muteElements.allSatisfy { element in
             var value: UInt32 = 0
             return read(selectedID, address(kAudioDevicePropertyMute, scope: kAudioDevicePropertyScopeOutput, element: element), into: &value) == noErr && value != 0
-        }
+        })
     }
 
     func selectDevice(_ id: AudioDeviceID) {
@@ -309,7 +347,7 @@ final class AudioController: ObservableObject {
             keyboardPermissionTimer?.invalidate()
             keyboardPermissionTimer = nil
         } else {
-            keyboardControlsMessage = "Allow MusicTask in System Settings → Privacy & Security → Accessibility. Controls will activate automatically once permission is available. macOS may require quitting and reopening MusicTask."
+            keyboardControlsMessage = "Allow ulular in System Settings → Privacy & Security → Accessibility. Controls will activate automatically once permission is available. macOS may require quitting and reopening ulular."
             guard keyboardPermissionTimer == nil else { return }
             let timer = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
                 Task { @MainActor [weak self] in
@@ -354,15 +392,18 @@ final class AudioController: ObservableObject {
                 guard let self else { return }
                 guard hardware || object == self.selectedID else { return }
                 if hardware {
-                    self.refreshDevices()
+                    self.invalidateElementCache()
+                    self.scheduleRefreshDevices()
                 } else if address.mSelector == kAudioDevicePropertyDeviceIsAlive {
-                    self.refreshDevices()
+                    self.invalidateElementCache()
+                    self.scheduleRefreshDevices()
                 } else if address.mSelector == kAudioDevicePropertyNominalSampleRate || address.mSelector == kAudioDevicePropertyStreamConfiguration {
                     if self.softwareVolumeEnabled {
                         self.disableSoftwareVolume(forgetPreference: false)
                         self.errorMessage = "The audio format changed. Software volume stopped; enable it again for the new format."
                     }
-                    self.refreshDevices()
+                    self.invalidateElementCache()
+                    self.scheduleRefreshDevices()
                 } else {
                     self.refreshVolume()
                 }
@@ -372,6 +413,10 @@ final class AudioController: ObservableObject {
             let listener = Listener(object: object, address: address, block: block)
             if hardware { hardwareListeners.append(listener) } else { deviceListeners.append(listener) }
         }
+    }
+
+    private func invalidateElementCache() {
+        elementCache.removeAll()
     }
 
     private func removeListeners(_ listeners: inout [Listener]) {

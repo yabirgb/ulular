@@ -37,7 +37,7 @@ final class SoftwareVolumeRouter: SoftwareVolumeRouting {
     deinit { stop() }
 
     func setGain(_ gain: Float) {
-        if let gainState { MTGainSet(gainState, gain) }
+        if let gainState { ULGainSet(gainState, gain) }
     }
 
     func stop() {
@@ -55,14 +55,14 @@ final class SoftwareVolumeRouter: SoftwareVolumeRouting {
             tapID = kAudioObjectUnknown
         }
         if let gainState {
-            MTGainDestroy(gainState)
+            ULGainDestroy(gainState)
             self.gainState = nil
         }
     }
 
     private func check(_ status: OSStatus, _ operation: String) throws {
         guard status == noErr else {
-            throw RoutingError(message: "\(operation) failed (Core Audio \(status)). Check System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen MusicTask if permission changed.")
+            throw RoutingError(message: "\(operation) failed (Core Audio \(status)). Check System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen ulular if permission changed.")
         }
     }
 
@@ -110,12 +110,12 @@ final class SoftwareVolumeRouter: SoftwareVolumeRouting {
         var address = AudioProperty.address(kAudioHardwarePropertyTranslatePIDToProcessObject)
         var size = UInt32(MemoryLayout<AudioObjectID>.size)
         try check(AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address,
-            UInt32(MemoryLayout<pid_t>.size), &pid, &size, &process), "Excluding MusicTask from capture")
+            UInt32(MemoryLayout<pid_t>.size), &pid, &size, &process), "Excluding ulular from capture")
         guard process != kAudioObjectUnknown else {
-            throw RoutingError(message: "Couldn't exclude MusicTask from capture; routing wasn't started to avoid audio feedback.")
+            throw RoutingError(message: "Couldn't exclude ulular from capture; routing wasn't started to avoid audio feedback.")
         }
         let description = CATapDescription(excludingProcesses: [process], deviceUID: uid as String, stream: 0)
-        description.name = "MusicTask Software Volume"
+        description.name = "ulular Software Volume"
         description.uuid = UUID()
         description.isPrivate = true
         description.muteBehavior = .mutedWhenTapped
@@ -127,7 +127,7 @@ final class SoftwareVolumeRouter: SoftwareVolumeRouting {
             throw RoutingError(message: "The monitor's first output stream must be stereo for software volume.")
         }
         let composition: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "MusicTask Private Audio Route",
+            kAudioAggregateDeviceNameKey: "ulular Private Audio Route",
             kAudioAggregateDeviceUIDKey: "com.musictask.route.\(UUID().uuidString)",
             kAudioAggregateDeviceIsPrivateKey: true,
             kAudioAggregateDeviceIsStackedKey: false,
@@ -146,11 +146,11 @@ final class SoftwareVolumeRouter: SoftwareVolumeRouting {
         }
         try validateStreams(scope: kAudioDevicePropertyScopeInput, sampleRate: format.mSampleRate)
         try validateStreams(scope: kAudioDevicePropertyScopeOutput, sampleRate: format.mSampleRate)
-        guard let state = MTGainCreate(initialGain, format.mSampleRate) else {
+        guard let state = ULGainCreate(initialGain, format.mSampleRate) else {
             throw RoutingError(message: "Couldn't allocate the software volume processor.")
         }
         gainState = state
-        try check(AudioDeviceCreateIOProcID(aggregateID, MTGainIOProc, UnsafeMutableRawPointer(state), &ioProc), "Creating audio processor")
+        try check(AudioDeviceCreateIOProcID(aggregateID, ULGainIOProc, UnsafeMutableRawPointer(state), &ioProc), "Creating audio processor")
         try check(AudioDeviceStart(aggregateID, ioProc), "Starting software volume")
     }
 }

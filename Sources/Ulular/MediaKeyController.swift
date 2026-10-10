@@ -50,6 +50,9 @@ final class MediaKeyController {
         return true
     }
 
+    // The event tap holds an unretained pointer to self; make sure it can never outlive us.
+    isolated deinit { stop() }
+
     func stop() {
         if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }

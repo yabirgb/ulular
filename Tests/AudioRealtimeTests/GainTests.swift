@@ -41,6 +41,41 @@ final class GainTests: XCTestCase {
         XCTAssertTrue(output.allSatisfy { $0 <= 0.5 })
     }
 
+    func testOutputLargerThanInputLeavesTailZeroed() {
+        let state = MTGainCreate(1, 48_000)!
+        defer { MTGainDestroy(state) }
+        var source = [Float](repeating: 0.5, count: 2 * 600)
+        var result = [Float](repeating: 99, count: 2 * 1000)
+        source.withUnsafeMutableBytes { src in
+            result.withUnsafeMutableBytes { dst in
+                var inputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(src.count), mData: src.baseAddress))
+                var outputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(dst.count), mData: dst.baseAddress))
+                MTGainRender(state, &inputList, &outputList)
+            }
+        }
+        XCTAssertEqual(result[1198], 0.5, accuracy: 0.0001)
+        XCTAssertTrue(result[1200...].allSatisfy { $0 == 0 })
+    }
+
+    func testExtraOutputChannelsAreZeroed() {
+        let state = MTGainCreate(1, 48_000)!
+        defer { MTGainDestroy(state) }
+        var source = [Float](repeating: 0.5, count: 2 * 1000)
+        var result = [Float](repeating: 99, count: 4 * 1000)
+        source.withUnsafeMutableBytes { src in
+            result.withUnsafeMutableBytes { dst in
+                var inputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 2, mDataByteSize: UInt32(src.count), mData: src.baseAddress))
+                var outputList = AudioBufferList(mNumberBuffers: 1, mBuffers: AudioBuffer(mNumberChannels: 4, mDataByteSize: UInt32(dst.count), mData: dst.baseAddress))
+                MTGainRender(state, &inputList, &outputList)
+            }
+        }
+        for frame in 0..<1000 {
+            XCTAssertEqual(result[frame * 4 + 2], 0)
+            XCTAssertEqual(result[frame * 4 + 3], 0)
+        }
+        XCTAssertEqual(result[3996], 0.5, accuracy: 0.0001)
+    }
+
     func testPlanarInputToInterleavedOutputAndMuteChange() {
         let state = MTGainCreate(0.5, 48_000)!
         defer { MTGainDestroy(state) }
